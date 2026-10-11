@@ -1,5 +1,5 @@
 # base defines a base stage that uses the official python runtime base image
-FROM python:3.11-slim AS base
+FROM python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce AS base
 
 # Add curl for healthcheck
 RUN apt-get update && \
@@ -13,9 +13,16 @@ WORKDIR /usr/local/app
 COPY requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Create an unprivileged application user
+RUN useradd --create-home --shell /usr/sbin/nologin appuser
+
 # dev defines a stage for development, where it'll watch for filesystem changes
 FROM base AS dev
 RUN pip install watchdog
+
+# Run development container as non-root
+USER appuser
+
 ENV FLASK_ENV=development
 CMD ["python", "app.py"]
 
@@ -23,7 +30,10 @@ CMD ["python", "app.py"]
 FROM base AS final
 
 # Copy our code from the current folder to the working directory inside the container
-COPY . .
+COPY --chown=appuser:appuser . .
+
+# Run production container as non-root
+USER appuser
 
 # Make port 80 available for links and/or publish
 EXPOSE 80
