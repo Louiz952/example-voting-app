@@ -1,0 +1,32 @@
+image:
+  registry: ghcr.io/louiz952
+  tag: latest
+  pullPolicy: IfNotPresent
+
+vote:
+  image: example-voting-app-vote
+  replicas: 1
+  service:
+    type: LoadBalancer
+    port: 80
+
+result:
+  image: example-voting-app-result
+  replicas: 1
+  service:
+    type: LoadBalancer
+    port: 80
+
+worker:
+  image: example-voting-app-worker
+  replicas: 1
+
+redis:
+  image: redis:alpine
+  replicas: 1
+
+db:
+  image: postgres:15-alpine
+  replicas: 1
+  username: postgres
+  password: postgres
