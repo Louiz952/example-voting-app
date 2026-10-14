@@ -14,23 +14,23 @@ permissions:
 jobs:
   test:
     name: Smoke Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Run application smoke test
         run: ./scripts/smoke-test.sh
 
   security-scan:
     name: Trivy Security Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: test
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Scan repository with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
@@ -41,9 +41,10 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: 1
+
   build-and-push:
     name: Build and Push ${{ matrix.service }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: security-scan
     if: github.event_name == 'push'
 
@@ -60,7 +61,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -78,3 +79,44 @@ jobs:
           context: ./${{ matrix.service }}
           push: true
           tags: ghcr.io/louiz952/example-voting-app-${{ matrix.service }}:${{ github.sha }}
+
+  deploy:
+    name: Deploy to EKS
+    runs-on: ubuntu-24.04
+    needs: build-and-push
+    if: github.event_name == 'push'
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::308664126365:role/example-voting-app-github-actions-role
+          aws-region: eu-west-1
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig \
+            --region eu-west-1 \
+            --name example-voting-app-cluster
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install voting-app ./helm/voting-app \
+            --namespace default \
+            --set image.tag=${{ github.sha }} \
+            --wait \
+            --timeout 5m
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/vote --namespace default --timeout=120s
+          kubectl rollout status deployment/result --namespace default --timeout=120s
+          kubectl rollout status deployment/worker --namespace default --timeout=120s
+          kubectl get pods --namespace default
