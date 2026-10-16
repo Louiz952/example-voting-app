@@ -106,6 +106,16 @@ jobs:
             --region eu-west-1 \
             --name example-voting-app-cluster
 
+      - name: Configure database secret
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        run: |
+          test -n "$POSTGRES_PASSWORD"
+          kubectl create secret generic voting-app-db \
+            --namespace default \
+            --from-literal=POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Deploy with Helm
         run: |
           helm upgrade --install voting-app ./helm/voting-app \

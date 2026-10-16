@@ -23,8 +23,14 @@ spec:
           env:
             - name: POSTGRES_USER
               value: {{ .Values.db.username | quote }}
+            - name: POSTGRES_DB
+              value: {{ .Values.db.database | quote }}
             - name: POSTGRES_PASSWORD
-              value: {{ .Values.db.password | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.db.secretName | quote }}
+                  key: POSTGRES_PASSWORD
+
           volumeMounts:
             - name: db-data
               mountPath: /var/lib/postgresql/data

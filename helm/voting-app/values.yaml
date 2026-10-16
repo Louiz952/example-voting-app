@@ -29,4 +29,5 @@ db:
   image: postgres:15-alpine
   replicas: 1
   username: postgres
-  password: postgres
+  database: postgres
+  secretName: voting-app-db

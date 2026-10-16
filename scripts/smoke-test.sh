@@ -2,6 +2,12 @@
 
 set -euo pipefail
 
+# Generate an ephemeral database password when one is not already provided.
+if [[ -z "${POSTGRES_PASSWORD:-}" ]]; then
+  export POSTGRES_PASSWORD
+  POSTGRES_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_hex(24))')"
+fi
+
 cleanup() {
   echo "Stopping test environment..."
   docker compose down -v --remove-orphans

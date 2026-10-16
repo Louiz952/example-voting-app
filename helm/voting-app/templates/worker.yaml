@@ -18,3 +18,15 @@ spec:
         - name: worker
           image: "{{ .Values.image.registry }}/{{ .Values.worker.image }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: PGHOST
+              value: "db"
+            - name: PGUSER
+              value: {{ .Values.db.username | quote }}
+            - name: PGDATABASE
+              value: {{ .Values.db.database | quote }}
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.db.secretName | quote }}
+                  key: POSTGRES_PASSWORD

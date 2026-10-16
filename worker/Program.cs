@@ -16,7 +16,19 @@ namespace Worker
         {
             try
             {
-                var pgsql = OpenDbConnection("Server=db;Username=postgres;Password=postgres;");
+                                var dbHost = Environment.GetEnvironmentVariable("PGHOST") ?? "db";
+                var dbUser = Environment.GetEnvironmentVariable("PGUSER") ?? "postgres";
+                var dbPassword = Environment.GetEnvironmentVariable("PGPASSWORD");
+                var dbName = Environment.GetEnvironmentVariable("PGDATABASE") ?? "postgres";
+
+                if (string.IsNullOrEmpty(dbPassword))
+                {
+                    throw new InvalidOperationException("PGPASSWORD environment variable is required.");
+                }
+
+                var dbConnectionString =
+                    $"Server={dbHost};Database={dbName};Username={dbUser};Password={dbPassword};";
+                var pgsql = OpenDbConnection(dbConnectionString);
                 var redisConn = OpenRedisConnection("redis");
                 var redis = redisConn.GetDatabase();
 
@@ -46,7 +58,7 @@ namespace Worker
                         if (!pgsql.State.Equals(System.Data.ConnectionState.Open))
                         {
                             Console.WriteLine("Reconnecting DB");
-                            pgsql = OpenDbConnection("Server=db;Username=postgres;Password=postgres;");
+                            pgsql = OpenDbConnection(dbConnectionString);
                         }
                         else
                         { // Normal +1 vote requested
